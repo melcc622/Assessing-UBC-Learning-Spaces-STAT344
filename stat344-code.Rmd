@@ -1,0 +1,179 @@
+---
+title: "STAT344 Final Project"
+author: ''
+date: "28/09/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r eval= FALSE, error = FALSE}
+library(dplyr)  
+library(tidyr)
+library(ggplot2)  
+library(magrittr) 
+library(MASS)
+library(readxl)
+library(readxl)
+```
+
+# Import Dataset
+
+```{r echo = TRUE}
+Rooms <- read.csv("C:/Users/Melody Lo/OneDrive - UBC/Desktop/2022W/STAT344/Rooms.csv")
+head(Rooms)
+```
+
+# Preliminary Study:
+The parameter values from [our school website]{https://learningspaces.ubc.ca/find-space} provides that the:
+
+* The mean learning space capacity $\mu = 62.77$
+* The standard deviation $\sigma = 68.325$ 
+* True proportion of learning spaces > 140 in capacity $p = 0.1094675$
+* 
+```{r echo = TRUE}
+# Continuous Case
+mean(Rooms$CAPACITY)
+sd(Rooms$CAPACITY) # 68.426 or 68.325
+
+# Binary Case
+sum((Rooms$CAPACITY>=140)/338) #0.1094675
+sqrt((0.1094675)*(1-0.1094675)) # 0.3122249
+
+```
+We want the width of our confidence interval in estimating average capacity size of UBC learning spaces to be less than 20. Thus:
+$2\times 1.96\times \sqrt{(1-\frac{n}{338})\times\frac{68.426^2}{n}} < 20$. which gives an sample size of $n=118$. 
+
+As for the discrete case, we look at the proportion of learning spaces with capacity larger than 140 students. We take the worst case scenario for $\hat p = 0.5$
+
+Thus, $s^2_{guess}$ = $0.5(1-0.5)=0.25$
+To receive results within $\pm0.05$, we solve for:
+$0.05=1.96\times\sqrt{(1-\frac{n}{338})\times\frac{0.5^2}{n}}$ which gives **$n=180$**
+
+
+# SRS Sampling
+```{r echo = TRUE}
+set.seed(12345)
+srs <- sample(1:338, 180, replace = FALSE)
+sort(srs)
+
+```
+```{r echo = TRUE}
+sample<-Rooms$CAPACITY[srs]
+sample
+sort(sample) # Sample values for learning space capacity 
+```
+# Continuous
+```{r echo = TRUE}
+cts_mean=mean(sample) # Continuous case, mean capacity for sample = 64.167
+cts_sd=sd(sample) # 74.025
+
+```
+### 95% Confidence Interval
+```{r echo = TRUE}
+lower_bound=cts_mean-1.96*cts_sd/sqrt(180)*sqrt(1-180/338)
+
+upper_bound=cts_mean+1.96*cts_sd/sqrt(180)*sqrt(1-180/338)
+
+print(c(lower_bound,upper_bound))
+```
+# Binary
+```{r echo = TRUE}
+prop<-(sum(sample>=140)/180)
+prop # 0.1056
+sd_prop<-(sqrt(prop*(1-prop)))
+sd_prop # 0.3073
+```
+
+### 95% Confidence Interval
+```{r echo = TRUE}
+lower_bound_bin=prop-1.96*sd_prop/sqrt(180)*sqrt(1-180/338)
+
+upper_bound_bin=prop+1.96*sd_prop/sqrt(180)*sqrt(1-180/338)
+
+print(c(lower_bound_bin,upper_bound_bin))
+
+```
+
+# Stratified Sampling 
+We will have our strats based on the type of furniture in the learning space. The possible types are the following:
+* Fixed Tablets
+* Fixed Tables
+* Moveable Tables
+* Moveable Tablets
+* Mixed
+
+```{r echo = TRUE}
+library(dplyr)
+mixed<-filter(Rooms,FURNITURE.TYPE=='Mixed')
+fixedtablets<-filter(Rooms,FURNITURE.TYPE=='Fixed Tablets')
+fixedtables<-filter(Rooms,FURNITURE.TYPE=='Fixed Tables')
+moveabletablets<-filter(Rooms,FURNITURE.TYPE=='Moveable Tablets')
+moveabletables<-filter(Rooms,FURNITURE.TYPE=='Moveable Tables')
+
+
+```
+We choose are sample size to be $\frac{nrow(...)}{338}*180$
+
+* mixed n = 4
+* fixed tablets n = 16
+* fixed tables n = 46
+* moveable tablets n= 18
+* moveable tables n = 98
+
+total sample size = 182
+
+
+```{r echo = TRUE}
+
+# sampling
+set.seed(200)
+
+mixed_sample<-sample_n(mixed,size=4,replace=FALSE)
+fixedtablets_sample<-sample_n(fixedtablets,size=16,replace=FALSE)
+fixedtables_sample<-sample_n(fixedtables,size=46,replace=FALSE)
+moveabletablets_sample<-sample_n(moveabletablets,size=18,replace=FALSE)
+moveabletables_sample<-sample_n(moveabletables,size=98,replace=FALSE)
+
+stratified_sample=rbind(mixed_sample,fixedtablets_sample,fixedtables_sample,moveabletablets_sample,moveabletables_sample)
+
+```
+
+```{r echo = TRUE}
+# standard deviaion
+strata_mean=mean(stratified_sample$CAPACITY) #67.26823
+strata_sd=sd(stratified_sample$CAPACITY) # 74.81512
+
+```
+
+### 95% Confidence Interval
+```{r echo = TRUE}
+lb_strata=strata_mean-1.96*strata_sd/sqrt(182)*sqrt(1-182/338)
+
+ub_strata=strata_mean+1.96*strata_sd/sqrt(182)*sqrt(1-182/338)
+
+print(c(lb_strata,ub_strata))
+```
+
+```{r echo = TRUE}
+prop_strat<-(sum(stratified_sample$CAPACITY>=140)/182)
+prop_strat # 0.1263736
+
+sd_prop_strat<-(sqrt(prop_strat*(1-prop_strat)))
+sd_prop_strat # 0.33227
+```
+
+### 95% Confidence Interval
+```{r echo = TRUE}
+lb_strata_p=prop_strat-1.96*sd_prop_strat/sqrt(182)*sqrt(1-182/338)
+
+ub_strata_p=prop_strat+1.96*sd_prop_strat/sqrt(182)*sqrt(1-182/338)
+
+print(c(lb_strata_p,ub_strata_p))
+
+```
+
+
